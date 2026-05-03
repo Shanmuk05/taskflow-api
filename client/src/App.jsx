@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react'
 import { Layout, Folder, CheckSquare, Users, Plus, LogOut, Trash2, CheckCircle2, Clock } from 'lucide-react'
 import './index.css'
 
-const API_URL = 'https://taskflow-api-production-3753.up.railway.app/api';
+const API_URL = import.meta.env.PROD ? '/api' : 'https://taskflow-api-production-3753.up.railway.app/api';
 
 function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [view, setView] = useState('dashboard'); // dashboard, projects, tasks, users
+  const [authMode, setAuthMode] = useState('login'); // login or signup
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -92,25 +93,30 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
-  const handleLogin = async (e) => {
+  const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    
     const email = e.target.email.value;
     const password = e.target.password.value;
+    const name = authMode === 'signup' ? e.target.name.value : undefined;
+    
+    const endpoint = authMode === 'signup' ? '/auth/signup' : '/auth/login';
+    const bodyPayload = authMode === 'signup' ? { name, email, password } : { email, password };
     
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
+      const res = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify(bodyPayload)
       });
       const data = await res.json();
       if (res.ok) {
         setToken(data.token);
         localStorage.setItem('token', data.token);
       } else {
-        setError(data.error || 'Login failed');
+        setError(data.error || `${authMode === 'signup' ? 'Signup' : 'Login'} failed`);
       }
     } catch (err) {
       setError('Network error connecting to API');
@@ -188,14 +194,20 @@ function App() {
         <div className="card">
           <div style={{textAlign: 'center', marginBottom: '24px'}}>
              <div className="avatar" style={{width: '64px', height: '64px', margin: '0 auto 16px', fontSize: '1.5rem'}}>TF</div>
-             <h1 className="title">Welcome back</h1>
-             <p className="subtitle">Sign in to manage your team flow</p>
+             <h1 className="title">Welcome to TaskFlow</h1>
+             <p className="subtitle">{authMode === 'login' ? 'Sign in to manage your team' : 'Create a new account'}</p>
           </div>
           
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleAuth}>
+            {authMode === 'signup' && (
+              <div className="form-group">
+                <label className="form-label">Full Name</label>
+                <input name="name" type="text" className="form-input" placeholder="John Doe" required />
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Email Address</label>
-              <input name="email" type="email" className="form-input" placeholder="admin@taskflow.com" required />
+              <input name="email" type="email" className="form-input" placeholder="user@taskflow.com" required />
             </div>
             <div className="form-group">
               <label className="form-label">Password</label>
@@ -203,8 +215,14 @@ function App() {
             </div>
             {error && <div className="error-message">{error}</div>}
             <button type="submit" className="btn" style={{width: '100%', marginTop: '12px'}} disabled={loading}>
-              {loading ? 'Authenticating...' : 'Sign In'}
+              {loading ? 'Authenticating...' : (authMode === 'login' ? 'Sign In' : 'Sign Up')}
             </button>
+            <div style={{textAlign: 'center', marginTop: '16px', fontSize: '0.9rem'}}>
+              {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
+              <a href="#" onClick={(e) => { e.preventDefault(); setAuthMode(authMode === 'login' ? 'signup' : 'login'); setError(''); }} style={{color: 'var(--primary)', textDecoration: 'none'}}>
+                {authMode === 'login' ? 'Sign up' : 'Log in'}
+              </a>
+            </div>
           </form>
         </div>
       </div>
@@ -265,6 +283,12 @@ function App() {
             <div className="stat-card" style={{borderColor: 'var(--success)'}}>
               <div className="stat-value" style={{color: 'var(--success)'}}>{dashboardData.tasks?.done || 0}</div>
               <div className="stat-label">Completed</div>
+            </div>
+            <div className="stat-card" style={{borderColor: 'var(--error)'}}>
+              <div className="stat-value" style={{color: 'var(--error)'}}>
+                {tasks.filter(t => t.status !== 'done' && new Date(t.due_date || t.created_at) < new Date()).length}
+              </div>
+              <div className="stat-label">Overdue Tasks</div>
             </div>
           </div>
 

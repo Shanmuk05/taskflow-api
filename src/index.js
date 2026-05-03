@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const path = require('path');
 
 const authRoutes = require('./routes/auth');
 const projectRoutes = require('./routes/projects');
@@ -44,8 +45,16 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/users', userRoutes);
 
-// ── 404 handler ───────────────────────────────────────────────────────────────
-app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
+// ── 404 handler for API routes ───────────────────────────────────────────────────────────────
+app.use('/api', (req, res) => res.status(404).json({ error: 'Route not found' }));
+
+// ── Serve React Frontend ──────────────────────────────────────────────────────
+const clientBuildPath = path.join(__dirname, '../client/dist');
+app.use(express.static(clientBuildPath));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientBuildPath, 'index.html'));
+});
 
 // ── Global error handler ──────────────────────────────────────────────────────
 // Suppress stack traces in production to avoid leaking internals
