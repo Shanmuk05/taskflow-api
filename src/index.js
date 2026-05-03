@@ -25,12 +25,11 @@ const PORT = process.env.PORT || 4000;
 app.use(helmet());
 
 // In production, FRONTEND_URL must be set; fall back to '*' only in dev
-const corsOrigin = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL
-  : isProduction
-    ? (() => { console.warn('[startup] FRONTEND_URL not set in production — CORS will block all origins'); return false; })()
-    : '*';
-app.use(cors({ origin: corsOrigin }));
+const corsOrigin = process.env.FRONTEND_URL || '*';
+app.use(cors({ 
+  origin: corsOrigin,
+  credentials: true
+}));
 
 app.use(express.json({ limit: '1mb' }));
 
